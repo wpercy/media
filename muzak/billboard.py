@@ -9,50 +9,58 @@ awards include ['Biggest gain in airplay', 'Highest ranking debut', 'Gains in pe
 
 HOT_100_URL = 'http://www.billboard.com/charts/hot-100'
 
-def make_soup(url):
-    res = requests.get(url)
-    soup = BeautifulSoup(res.text)
-    return soup
+class Hot100Parser(object):
 
-def hot_100(soup):
-    songs = []
-    awardset = set()
-    rows = soup.find_all('article', 'chart-row')
-    for r in rows:
-        song = dict()
+    def __init__(self, url=HOT_100_URL):
+        self.hot_url = url
+        self.make_soup(url)
 
-        row_title = r.find('div', 'row-title')
-        song['title'] = row_title.h2.text.strip()
-        song['artist'] = row_title.h3.text.strip()
-        try:
-            song['spotify_id'] = r.select('.spotify')[0]['href'].split('track:')[-1]
-        except IndexError:
-            song['spotify_id'] = None
-        song['history'] = r.find('div', 'row-history')['class'][1].split('-')[2]
+    def make_soup(self, url):
+        r = requests.get(url)
+        self.soup = BeautifulSoup(r.text, 'lxml')
 
-        rankings = r.find('div', 'row-rank')
-        song['this_week'] = rankings.select('.this-week')[0].text
-        song['last_week'] = rankings.select('.last-week')[0].text.split(' ')[-1]
+    def hot_100(self, soup=None):
+        if soup is None:
+            soup = self.soup
 
-        rowstats = r.find('div', 'stats')
-        stats = {}
-        stats['top_spot'] = rowstats.find('div', 'stats-top-spot').find('span', 'value').text
-        stats['weeks_on_chart'] = rowstats.find('div', 'stats-weeks-on-chart').find('span', 'value').text
-        song['stats'] = stats
+        songs = []
+        awardset = set()
+        rows = soup.find_all('article', 'chart-row')
+        for r in rows:
+            song = dict()
 
-        awards = r.find('ul', 'row-awards')
-        song['awards'] = [ l.text.strip() for l in awards.find_all('li') ] if awards else []
+            row_title = r.find('div', 'chart-row__title')
+            song['title'] = row_title.h2.text.strip()
+            song['artist'] = row_title.h3.text.strip()
+            # try:
+            #     song['spotify_id'] = r.select('.spotify')[0]['href'].split('track:')[-1]
+            # except IndexError:
+            #     song['spotify_id'] = None
+            song['history'] = r.find('div', 'chart-row__history')['class'][1].split('-')[-1]
 
-        awardset.update(song['awards'])
+            rankings = r.find('div', 'chart-row__rank')
+            song['this_week'] = rankings.select('.chart-row__current-week')[0].text
+            song['last_week'] = rankings.select('.chart-row__last-week')[0].text.split(' ')[-1]
 
-        songs.append(song)
+            rowstats = r.find('div', 'chart-row__stats')
+            stats = dict()
+            stats['top_spot'] = rowstats.find('div', 'chart-row__top-spot').find('span', 'chart-row__value').text
+            stats['weeks_on_chart'] = rowstats.find('div', 'chart-row__weeks-on-chart').find('span', 'chart-row__value').text
+            song['stats'] = stats
 
-    print awardset
-    return songs
+            awards = r.find('ul', 'chart-row__awards')
+            song['awards'] = [ l.text.strip() for l in awards.find_all('li') ] if awards else []
+
+            # awardset.update(song['awards'])
+            songs.append(song)
+
+        return songs
+
+
 
 def main():
-    soup = make_soup(HOT_100_URL)
-    hot_100_list = hot_100(soup)
+    p = Hot100Parser(HOT_100_URL)
+    hot_100_list = p.hot_100()
 
 if __name__ == '__main__':
     main()
