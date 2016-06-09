@@ -31,7 +31,7 @@ class Hot100Parser(object):
 
             row_title = r.find('div', 'chart-row__title')
             song['title'] = row_title.h2.text.strip()
-            song['artist'] = row_title.h3.text.strip()
+            song['artist'] = row_title.a.text.strip()
             # try:
             #     song['spotify_id'] = r.select('.spotify')[0]['href'].split('track:')[-1]
             # except IndexError:
