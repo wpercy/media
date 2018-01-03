@@ -1,6 +1,9 @@
 from bs4 import BeautifulSoup
 import requests
 
+import traceback
+import sys
+
 """
 awards include ['Biggest gain in airplay', 'Highest ranking debut', 'Gains in performance',
                 'Biggest gain in digital sales', u'Biggest gain in streams']
@@ -26,14 +29,14 @@ class Hot100Parser(object):
 
         songs = []
         bad_songs = []
-        awardset = set()
-        rows = soup.find_all('div', 'chart-row__primary')
+        rows = soup.find_all('article', 'chart-row')
         for r in rows:
             song = dict()
             try:
                 row_title = r.find('div', 'chart-row__title')
                 song['title'] = row_title.h2.text.strip()
-                song['artist'] = row_title.a.text.strip()
+                # some artists aren't <a> tags so find them using next_sibling
+                song['artist'] = row_title.h2.next_sibling.next_sibling.strip()
                 # try:
                 #     song['spotify_id'] = r.select('.spotify')[0]['href'].split('track:')[-1]
                 # except IndexError:
@@ -49,13 +52,12 @@ class Hot100Parser(object):
                 stats['top_spot'] = rowstats.find('div', 'chart-row__top-spot').find('span', 'chart-row__value').text
                 stats['weeks_on_chart'] = rowstats.find('div', 'chart-row__weeks-on-chart').find('span', 'chart-row__value').text
                 song['stats'] = stats
-            except AttributeError:
-                bad_songs.append(songs)
+            except AttributeError as e:
+                bad_songs.append(song)
 
             awards = r.find('ul', 'chart-row__awards')
-            song['awards'] = [ l.text.strip() for l in awards.find_all('li') ] if awards else []
+            song['awards'] = [l.text.strip() for l in awards.find_all('li')] if awards else []
 
-            # awardset.update(song['awards'])
             songs.append(song)
 
         return dict(songs=songs, bad=bad_songs)
